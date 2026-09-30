@@ -1,1 +1,1 @@
-public class Hello { public static void main(String[] args) { System.out.println("Hello from Multipass!"); } }
+public class Hello { public static void main(String[] args) { System.out.println("Hello from GitHub webhook build!"); } }
