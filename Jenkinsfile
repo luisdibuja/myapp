@@ -5,6 +5,9 @@ pipeline {
         skipDefaultCheckout(true)
         disableConcurrentBuilds()
     }
+	triggers {
+    githubPush() 
+}
 
     stages {
         stage('Checkout') {
