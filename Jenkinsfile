@@ -5,9 +5,10 @@ pipeline {
         skipDefaultCheckout(true)
         disableConcurrentBuilds()
     }
-	triggers {
-    githubPush() 
-}
+
+    triggers {
+        githubPush()
+    }
 
     stages {
         stage('Checkout') {
@@ -19,6 +20,41 @@ pipeline {
         stage('Build') {
             steps {
                 sh 'mvn -B clean package'
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                script {
+                    env.DOCKER_IMAGE = 'luisdibuja/myapp:' + sh(
+                        script: 'git rev-parse --short=12 HEAD',
+                        returnStdout: true
+                    ).trim()
+                }
+                sh 'docker build --tag "$DOCKER_IMAGE" .'
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-myapp',
+                    usernameVariable: 'DOCKERHUB_USER',
+                    passwordVariable: 'DOCKERHUB_TOKEN'
+                )]) {
+                    sh '''
+                        set +x
+                        set -eu
+                        DOCKER_CONFIG=$(mktemp -d)
+                        export DOCKER_CONFIG
+                        trap 'rm -rf "$DOCKER_CONFIG"' EXIT
+                        trap 'exit 1' HUP INT TERM
+
+                        printf '%s' "$DOCKERHUB_TOKEN" |
+                            docker login --username "$DOCKERHUB_USER" --password-stdin
+                        docker push "$DOCKER_IMAGE"
+                    '''
+                }
             }
         }
 
@@ -36,7 +72,8 @@ pipeline {
                 )
             }
         }
-	        stage('Smoke Test') {
+
+        stage('Smoke Test') {
             steps {
                 retry(5) {
                     sleep time: 2, unit: 'SECONDS'
